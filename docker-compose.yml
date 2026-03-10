@@ -1,0 +1,84 @@
+version: "3.9"
+
+# ============================================================
+# TransitIQ — Local Development Infrastructure
+# ------------------------------------------------------------
+# Starts 3 services:
+#   1. TimescaleDB  — our time-series database (port 5432)
+#   2. Redis        — our message queue (port 6379)
+#   3. Adminer      — visual database UI (port 8080)
+#
+# Commands:
+#   Start:   docker compose up -d
+#   Stop:    docker compose down
+#   Logs:    docker compose logs -f
+#   Reset:   docker compose down -v  (WARNING: deletes all data)
+# ============================================================
+
+services:
+
+  # ── 1. TimescaleDB ─────────────────────────────────────────
+  # PostgreSQL with time-series superpowers
+  # Makes queries like "delays in last 30 days" 10-100x faster
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: transitiq_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: transitiq
+      POSTGRES_USER: transitiq
+      POSTGRES_PASSWORD: localdev123
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U transitiq -d transitiq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── 2. Redis ───────────────────────────────────────────────
+  # Message queue between our poller and processor
+  # Events flow: TTC API → Redis Stream → TimescaleDB
+  redis:
+    image: redis:7-alpine
+    container_name: transitiq_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # ── 3. Adminer ─────────────────────────────────────────────
+  # Visual database UI — open http://localhost:8080 in browser
+  # Login details:
+  #   System:   PostgreSQL
+  #   Server:   timescaledb
+  #   Username: transitiq
+  #   Password: localdev123
+  #   Database: transitiq
+  adminer:
+    image: adminer:latest
+    container_name: transitiq_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+
+# ── Named Volumes ───────────────────────────────────────────
+# Docker manages these — your data persists between restarts
+volumes:
+  timescale_data:
+  redis_data:
