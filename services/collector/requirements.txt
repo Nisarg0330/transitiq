@@ -1,0 +1,34 @@
+# ============================================================
+# TransitIQ — Collector Service Dependencies
+# ------------------------------------------------------------
+# Install with:
+#   pip install -r requirements.txt
+# ============================================================
+
+# ── GTFS-Realtime ────────────────────────────────────────────
+# Parses the binary protobuf format from TTC/GO Transit feeds
+gtfs-realtime-bindings==1.0.0
+protobuf==4.25.3
+
+# ── HTTP Requests ────────────────────────────────────────────
+# Fetches data from transit APIs
+requests==2.31.0
+
+# ── Redis ────────────────────────────────────────────────────
+# Pushes events to Redis Streams
+redis==5.0.3
+
+# ── Scheduling ───────────────────────────────────────────────
+# Runs the poller every 60 seconds automatically
+APScheduler==3.10.4
+
+# ── Environment Variables ────────────────────────────────────
+# Loads values from .env file
+python-dotenv==1.0.1
+
+# ── Timezone Support ─────────────────────────────────────────
+pytz==2024.1
+
+# ── Logging ──────────────────────────────────────────────────
+# Better log formatting (built into Python, no install needed)
+# logging — standard library
