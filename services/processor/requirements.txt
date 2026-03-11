@@ -1,0 +1,21 @@
+# ============================================================
+# TransitIQ — Processor Service Dependencies
+# ------------------------------------------------------------
+# Install with:
+#   pip install -r requirements.txt
+# ============================================================
+
+# ── Redis ────────────────────────────────────────────────────
+# Reads events from Redis Streams
+redis==5.0.3
+
+# ── Database ─────────────────────────────────────────────────
+# Writes normalized events to TimescaleDB (PostgreSQL)
+psycopg2-binary==2.9.9
+
+# ── Environment Variables ────────────────────────────────────
+# Loads values from .env file
+python-dotenv==1.0.1
+
+# ── Timezone Support ─────────────────────────────────────────
+pytz==2024.1
