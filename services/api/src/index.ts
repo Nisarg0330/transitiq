@@ -1,83 +1,73 @@
 /**
  * TransitIQ — Express API Server
  * ================================
- * Phase 6 | File 3 of 8
- *
- * Main entry point for the Node.js REST API.
- *
- * Architecture:
- *   React Frontend → this API → ML Predictor (FastAPI)
- *                             → TimescaleDB
- *
- * Port: 3001 (frontend runs on 3000, predictor on 8001)
- *
- * How to run:
- *   cd services/api
- *   npm run dev
+ * Phase 6 | Updated with Clerk Webhook
  */
 
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import dotenv from "dotenv";
+import express        from "express";
+import cors           from "cors";
+import helmet         from "helmet";
+import rateLimit      from "express-rate-limit";
+import dotenv         from "dotenv";
 import { clerkMiddleware } from "@clerk/express";
 
 import { healthRouter }  from "./routes/health";
 import { predictRouter } from "./routes/predict";
 import { userRouter }    from "./routes/user";
+import { webhookRouter } from "./routes/webhook";
 import { logger }        from "./logger";
 
-// ── Load environment variables ────────────────────────────────
 dotenv.config({ path: "../../.env" });
 
 const app  = express();
 const PORT = process.env.API_PORT || 3001;
 
 // =============================================================
-// SECTION 1: SECURITY MIDDLEWARE
+// SECTION 1: WEBHOOK ROUTE — must come BEFORE express.json()
+// Svix signature verification needs the raw request body
 // =============================================================
 
-// Helmet — sets secure HTTP headers
+app.use("/api/webhooks", express.json(), webhookRouter);
+
+// =============================================================
+// SECTION 2: SECURITY MIDDLEWARE
+// =============================================================
+
 app.use(helmet());
 
-// CORS — allow requests from React frontend
 app.use(cors({
   origin: [
-    "http://localhost:3000",    // React dev server
-    "http://localhost:5173",    // Vite dev server
+    "http://localhost:3000",
+    "http://localhost:5173",
     process.env.FRONTEND_URL || "http://localhost:3000",
   ],
   credentials: true,
 }));
 
-// Rate limiting — prevent abuse
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,  // 15 minutes
-  max:      100,              // 100 requests per window
-  message:  { error: "Too many requests — please try again later" },
+  windowMs:       15 * 60 * 1000,
+  max:            100,
+  message:        { error: "Too many requests — please try again later" },
   standardHeaders: true,
-  legacyHeaders:   false,
+  legacyHeaders:  false,
 });
 app.use("/api/", limiter);
 
 // =============================================================
-// SECTION 2: BODY PARSING
+// SECTION 3: BODY PARSING
 // =============================================================
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // =============================================================
-// SECTION 3: CLERK AUTH MIDDLEWARE
+// SECTION 4: CLERK AUTH MIDDLEWARE
 // =============================================================
 
-// Clerk middleware — attaches auth state to every request
-// Protected routes check auth using requireAuth()
 app.use(clerkMiddleware());
 
 // =============================================================
-// SECTION 4: REQUEST LOGGING
+// SECTION 5: REQUEST LOGGING
 // =============================================================
 
 app.use((req, _res, next) => {
@@ -86,7 +76,7 @@ app.use((req, _res, next) => {
 });
 
 // =============================================================
-// SECTION 5: ROUTES
+// SECTION 6: ROUTES
 // =============================================================
 
 app.use("/api/health",  healthRouter);
@@ -105,7 +95,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 // =============================================================
-// SECTION 6: START SERVER
+// SECTION 7: START SERVER
 // =============================================================
 
 app.listen(PORT, () => {
