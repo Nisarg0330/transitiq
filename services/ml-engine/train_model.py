@@ -107,6 +107,8 @@ def split_data(X, y):
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
+
+
 # =============================================================
 # SECTION 2: TRAIN MODEL
 # =============================================================
@@ -128,42 +130,28 @@ def train_model(X_train, X_val, y_train, y_val):
     log.info("Training LightGBM model...")
     log.info("This may take 1-2 minutes...")
 
-    # Calculate class weight to handle imbalance
-    # Since delayed events are minority, we weight them higher
-    delay_rate  = y_train.mean()
-    scale_pos   = (1 - delay_rate) / delay_rate
-    log.info(f"Class imbalance ratio: {scale_pos:.2f}x (delayed weighted higher)")
-
     model = lgb.LGBMClassifier(
-        # Core parameters
         n_estimators=500,
         learning_rate=0.05,
         max_depth=6,
-        num_leaves=31,
-
-        # Regularization (prevents overfitting)
+        num_leaves=63,
         min_child_samples=20,
-        reg_alpha=0.1,
-        reg_lambda=0.1,
         subsample=0.8,
         colsample_bytree=0.8,
-
-        # Handle class imbalance
-        scale_pos_weight=scale_pos,
-
-        # Performance
-        n_jobs=-1,          # use all CPU cores
+        reg_alpha=0.1,
+        reg_lambda=0.1,
+        is_unbalance=True,   # ← replaces scale_pos_weight + class_weight
+        n_jobs=-1,
         random_state=42,
-        verbose=-1,         # suppress LightGBM output
+        verbose=-1,
     )
 
-    # Train with early stopping on validation set
     model.fit(
         X_train, y_train,
         eval_set=[(X_val, y_val)],
         callbacks=[
             lgb.early_stopping(stopping_rounds=50, verbose=False),
-            lgb.log_evaluation(period=100),
+            lgb.log_evaluation(period=50),
         ],
     )
 
@@ -295,6 +283,29 @@ if __name__ == "__main__":
     # ── Step 2: Split data ────────────────────────────────────
     log.info("Step 2/4 — Splitting data...")
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
+
+    # ── Oversample delayed class in training data ─────────────
+    from sklearn.utils import resample
+
+    X_train_df = X_train.copy()
+    X_train_df["target"] = y_train.values
+
+    majority = X_train_df[X_train_df["target"] == 0]
+    minority = X_train_df[X_train_df["target"] == 1]
+
+    minority_upsampled = resample(
+        minority,
+        replace=True,
+        n_samples=int(len(majority) * 0.4),
+        random_state=42
+    )
+
+    balanced = pd.concat([majority, minority_upsampled])
+    X_train  = balanced.drop("target", axis=1)
+    y_train  = balanced["target"]
+
+    log.info(f"After balancing — Train set: {len(X_train):,} samples")
+    log.info(f"Delay rate in training: {y_train.mean()*100:.1f}%")
 
     # ── Step 3: Train model ───────────────────────────────────
     log.info("Step 3/4 — Training LightGBM model...")
