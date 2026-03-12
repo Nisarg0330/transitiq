@@ -162,82 +162,63 @@ def parse_vehicle_positions(feed) -> list:
 
 
 def parse_trip_updates(feed) -> list:
-    """
-    Extracts trip update (delay) data from a GTFS-RT feed.
-
-    THIS is the most important data — it contains the actual
-    delay in seconds for every stop on every active trip.
-
-    A delay_seconds value of:
-        +300  = 5 minutes LATE
-        0     = on time
-        -60   = 1 minute EARLY
-
-    Returns a list of delay event dicts ready for Redis.
-    """
     events = []
 
     for entity in feed.entity:
-        # Skip if this entity has no trip update
         if not entity.HasField("trip_update"):
             continue
 
         trip_update = entity.trip_update
         trip        = trip_update.trip
 
-        # Each trip update can have multiple stop time updates
         for stop_update in trip_update.stop_time_update:
 
-            # Get delay from arrival data
-            delay_seconds = 0
+            # ── Read delay directly from protobuf ─────────────
+            delay_seconds  = 0
             scheduled_time = ""
             actual_time    = ""
 
             if stop_update.HasField("arrival"):
-                arrival = stop_update.arrival
+                arrival       = stop_update.arrival
+                delay_seconds = arrival.delay  # ← actual delay in seconds
 
-                # GTFS-RT gives us delay directly in seconds
-                delay_seconds = arrival.delay
-
-                # Calculate scheduled and actual times
-                if arrival.time:
-                    actual_dt = datetime.fromtimestamp(
-                        arrival.time, tz=timezone.utc
-                    )
-                    scheduled_dt = datetime.fromtimestamp(
+                if arrival.time and arrival.time > 0:
+                    actual_dt      = datetime.fromtimestamp(arrival.time, tz=timezone.utc)
+                    scheduled_dt   = datetime.fromtimestamp(
                         arrival.time - delay_seconds, tz=timezone.utc
                     )
                     actual_time    = actual_dt.isoformat()
                     scheduled_time = scheduled_dt.isoformat()
 
+            elif stop_update.HasField("departure"):
+                departure     = stop_update.departure
+                delay_seconds = departure.delay  # ← fallback to departure delay
+
+                if departure.time and departure.time > 0:
+                    actual_dt      = datetime.fromtimestamp(departure.time, tz=timezone.utc)
+                    scheduled_dt   = datetime.fromtimestamp(
+                        departure.time - delay_seconds, tz=timezone.utc
+                    )
+                    actual_time    = actual_dt.isoformat()
+                    scheduled_time = scheduled_dt.isoformat()
+
             event = {
-                # What kind of event this is
-                "agency":      "TTC",
-                "event_type":  "trip_update",
-
-                # Route and trip info
-                "route_id":    trip.route_id if trip.route_id else "unknown",
-                "trip_id":     trip.trip_id  if trip.trip_id  else "",
-                "direction":   str(trip.direction_id),
-
-                # Vehicle info
-                "vehicle_id":  trip_update.vehicle.id if trip_update.vehicle.id else "",
-
-                # Stop info
-                "stop_id":     stop_update.stop_id if stop_update.stop_id else "",
-
-                # THE KEY DATA — delay in seconds
+                "agency":         "TTC",
+                "event_type":     "trip_update",
+                "route_id":       trip.route_id   if trip.route_id   else "unknown",
+                "trip_id":        trip.trip_id     if trip.trip_id    else "",
+                "direction":      str(trip.direction_id),
+                "vehicle_id":     trip_update.vehicle.label if trip_update.vehicle.label else "",
+                "stop_id":        str(stop_update.stop_id)  if stop_update.stop_id else "",
                 "delay_seconds":  str(delay_seconds),
                 "scheduled_time": scheduled_time,
                 "actual_time":    actual_time,
-
-                "ingested_at": datetime.now(timezone.utc).isoformat(),
+                "ingested_at":    datetime.now(timezone.utc).isoformat(),
             }
 
             events.append(event)
 
     return events
-
 
 # =============================================================
 # SECTION 3: PUSH TO REDIS
