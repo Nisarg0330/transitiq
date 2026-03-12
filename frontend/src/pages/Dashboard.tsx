@@ -19,9 +19,9 @@ export function Dashboard() {
     transitAPI.getStats().then(setStats).catch(console.error);
   }, []);
 
-  useEffect(() => {
-    if (selectedRoute) handlePredict();
-  }, [selectedRoute]);
+  // useEffect(() => {
+  //   if (selectedRoute) handlePredict();
+  // }, [selectedRoute]);
 
   const handlePredict = async () => {
     setLoading(true);
