@@ -106,4 +106,8 @@ app.listen(PORT, () => {
   logger.info("=".repeat(50));
 });
 
+import { pushRouter } from "./routes/push";
+// with the other routes:
+app.use("/api/push", pushRouter);
+
 export default app;
