@@ -2,21 +2,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy from the api directory (Docker context is repo root)
+COPY services/api/package*.json ./
+COPY services/api/tsconfig.json ./
 
-# Install dependencies
 RUN npm install
 
-# Copy source
-COPY src/ ./src/
+COPY services/api/src/ ./src/
 
-# Build TypeScript
 RUN npm run build
 
-# Expose port
 EXPOSE 3001
 
-# Start
 CMD ["node", "dist/index.js"]
