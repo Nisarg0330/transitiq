@@ -8,13 +8,16 @@ const TORONTO_CENTER: [number, number] = [43.6532, -79.3832];
 
 export function Dashboard() {
   const [routes, setRoutes]               = useState<RouteInfo[]>([]);
-  const [selectedRoute, setSelectedRoute] = useState<string>("504");
+  const [selectedRoute, setSelectedRoute] = useState<string>("10");
   const [prediction, setPrediction]       = useState<PredictionResult | null>(null);
   const [loading, setLoading]             = useState(false);
   const [stats, setStats]                 = useState<any[]>([]);
 
   useEffect(() => {
-    transitAPI.getRoutes().then(setRoutes).catch(console.error);
+    transitAPI.getRoutes().then((data) => {
+      setRoutes(data);
+      if (data.length > 0) setSelectedRoute(data[0].route_id);
+    }).catch(console.error);
     transitAPI.getStats().then(setStats).catch(console.error);
   }, []);
 
