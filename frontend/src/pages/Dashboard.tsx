@@ -1,17 +1,26 @@
-import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
-import { transitAPI, type PredictionResult, type RouteInfo } from "../lib/api";
-import { AlertTriangle, CheckCircle, Clock, TrendingUp } from "lucide-react";
+import { useState, useEffect }                                      from "react";
+import { MapContainer, TileLayer, CircleMarker, Popup }            from "react-leaflet";
+import { transitAPI, type PredictionResult, type RouteInfo }       from "../lib/api";
+import { AlertTriangle, CheckCircle, Clock, TrendingUp, MapPin }   from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 const TORONTO_CENTER: [number, number] = [43.6532, -79.3832];
 
+const STOPS = [
+  { pos: [43.6532, -79.3832] as [number, number], name: "Union Station",    risk: "high"     },
+  { pos: [43.6629, -79.3957] as [number, number], name: "King & Spadina",   risk: "moderate" },
+  { pos: [43.6703, -79.3883] as [number, number], name: "Dundas Square",    risk: "severe"   },
+  { pos: [43.6797, -79.4076] as [number, number], name: "Bloor & Bathurst", risk: "low"      },
+  { pos: [43.6456, -79.3806] as [number, number], name: "Front & Yonge",    risk: "moderate" },
+];
+
 export function Dashboard() {
   const [routes, setRoutes]               = useState<RouteInfo[]>([]);
-  const [selectedRoute, setSelectedRoute] = useState<string>("10");
+  const [selectedRoute, setSelectedRoute] = useState<string>("");
   const [prediction, setPrediction]       = useState<PredictionResult | null>(null);
   const [loading, setLoading]             = useState(false);
   const [stats, setStats]                 = useState<any[]>([]);
+  const [isMobile, setIsMobile]           = useState(window.innerWidth < 768);
 
   useEffect(() => {
     transitAPI.getRoutes().then((data) => {
@@ -19,6 +28,10 @@ export function Dashboard() {
       if (data.length > 0) setSelectedRoute(data[0].route_id);
     }).catch(console.error);
     transitAPI.getStats().then(setStats).catch(console.error);
+
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const handlePredict = async () => {
@@ -50,71 +63,89 @@ export function Dashboard() {
   const ttcStats = stats.find(s => s.agency === "TTC");
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px" }}>
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: isMobile ? "16px" : "24px" }}>
 
-      <div style={{ marginBottom: "24px" }} className="animate-slide-up">
-        <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#F8FAFC", marginBottom: "4px" }}>
+      <div style={{ marginBottom: "20px" }}>
+        <h1 style={{ fontSize: isMobile ? "22px" : "28px", fontWeight: "700", color: "#F8FAFC", marginBottom: "4px" }}>
           GTA Transit Dashboard
         </h1>
-        <p style={{ color: "#94A3B8", fontSize: "14px" }}>
-          Real-time delay predictions powered by ML
-        </p>
+        <p style={{ color: "#94A3B8", fontSize: "14px" }}>Real-time delay predictions powered by ML</p>
       </div>
 
+      {/* Stats Row */}
       <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: "16px",
-        marginBottom: "24px",
+        display:             "grid",
+        gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)",
+        gap:                 isMobile ? "10px" : "16px",
+        marginBottom:        "20px",
       }}>
         {[
-          { label: "Total Events",  value: ttcStats ? parseInt(ttcStats.total_events).toLocaleString() : "—", icon: TrendingUp,  color: "#6366F1" },
+          { label: "Total Events",  value: ttcStats ? parseInt(ttcStats.total_events).toLocaleString() : "—", icon: TrendingUp,   color: "#6366F1" },
           { label: "Delay Rate",    value: ttcStats ? `${ttcStats.delay_rate_pct}%` : "—",                    icon: AlertTriangle, color: "#F59E0B" },
-          { label: "Avg Delay",     value: ttcStats ? `${Math.round(ttcStats.avg_delay_seconds / 60)}m` : "—", icon: Clock,       color: "#EF4444" },
-          { label: "Model ROC-AUC", value: "0.91",                                                             icon: CheckCircle, color: "#10B981" },
+          { label: "Avg Delay",     value: ttcStats ? `${Math.round(ttcStats.avg_delay_seconds / 60)}m` : "—", icon: Clock,        color: "#EF4444" },
+          { label: "Model ROC-AUC", value: "0.91",                                                             icon: CheckCircle,  color: "#10B981" },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="glass-card" style={{ padding: "20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: `${color}20`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon size={20} color={color} />
+          <div key={label} className="glass-card" style={{ padding: isMobile ? "14px" : "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: `${color}20`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon size={18} color={color} />
               </div>
               <div>
-                <p style={{ color: "#94A3B8", fontSize: "12px" }}>{label}</p>
-                <p style={{ color: "#F8FAFC", fontSize: "22px", fontWeight: "700" }}>{value}</p>
+                <p style={{ color: "#94A3B8", fontSize: "11px" }}>{label}</p>
+                <p style={{ color: "#F8FAFC", fontSize: isMobile ? "18px" : "22px", fontWeight: "700" }}>{value}</p>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "24px" }}>
+      {/* Main Grid */}
+      <div style={{
+        display:             "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1fr 340px",
+        gap:                 "20px",
+      }}>
 
-        <div className="glass-card" style={{ overflow: "hidden", height: "500px" }}>
-          <MapContainer center={TORONTO_CENTER} zoom={12} style={{ height: "100%", width: "100%" }}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" />
-            {[
-              { pos: [43.6532, -79.3832] as [number, number], name: "Union Station",    risk: "high"     },
-              { pos: [43.6629, -79.3957] as [number, number], name: "King & Spadina",   risk: "moderate" },
-              { pos: [43.6703, -79.3883] as [number, number], name: "Dundas Square",    risk: "severe"   },
-              { pos: [43.6797, -79.4076] as [number, number], name: "Bloor & Bathurst", risk: "low"      },
-              { pos: [43.6456, -79.3806] as [number, number], name: "Front & Yonge",    risk: "moderate" },
-            ].map(({ pos, name, risk }) => (
-              <CircleMarker key={name} center={pos} radius={10} pathOptions={{ color: getRiskColor(risk), fillColor: getRiskColor(risk), fillOpacity: 0.7 }}>
-                <Popup>
-                  <div style={{ color: "#0D0D1A", fontWeight: "600" }}>
-                    {name}<br />
-                    <span style={{ color: getRiskColor(risk), fontSize: "12px" }}>{risk.toUpperCase()} RISK</span>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
-          </MapContainer>
-        </div>
+        {/* Map (desktop) or Stop List (mobile) */}
+        {isMobile ? (
+          <div className="glass-card" style={{ padding: "16px" }}>
+            <h3 style={{ color: "#F8FAFC", fontWeight: "600", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <MapPin size={16} color="#6366F1" /> Key Stops — Live Risk
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {STOPS.map(({ name, risk }) => (
+                <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderRadius: "8px", background: "#1A1A2E" }}>
+                  <span style={{ color: "#F8FAFC", fontSize: "14px" }}>{name}</span>
+                  <span style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: `${getRiskColor(risk)}20`, color: getRiskColor(risk), textTransform: "uppercase" }}>
+                    {risk}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="glass-card" style={{ overflow: "hidden", height: "500px" }}>
+            <MapContainer center={TORONTO_CENTER} zoom={12} style={{ height: "100%", width: "100%" }}>
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" />
+              {STOPS.map(({ pos, name, risk }) => (
+                <CircleMarker key={name} center={pos} radius={10} pathOptions={{ color: getRiskColor(risk), fillColor: getRiskColor(risk), fillOpacity: 0.7 }}>
+                  <Popup>
+                    <div style={{ color: "#0D0D1A", fontWeight: "600" }}>
+                      {name}<br />
+                      <span style={{ color: getRiskColor(risk), fontSize: "12px" }}>{risk.toUpperCase()} RISK</span>
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              ))}
+            </MapContainer>
+          </div>
+        )}
 
+        {/* Prediction Panel */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div className="glass-card" style={{ padding: "20px" }}>
             <h3 style={{ color: "#F8FAFC", fontWeight: "600", marginBottom: "12px" }}>Predict Delay</h3>
-            <select value={selectedRoute} onChange={e => setSelectedRoute(e.target.value)} className="input-dark" style={{ marginBottom: "12px" }}>
+            <select value={selectedRoute} onChange={e => setSelectedRoute(e.target.value)} className="input-dark" style={{ marginBottom: "12px", width: "100%" }}>
               {routes.slice(0, 50).map(r => (
                 <option key={r.route_id} value={r.route_id}>{r.agency} Route {r.route_id}</option>
               ))}
@@ -147,18 +178,10 @@ export function Dashboard() {
               <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #2D2D4A" }}>
                 <p style={{ color: "#94A3B8", fontSize: "11px" }}>CONDITIONS</p>
                 <div style={{ display: "flex", gap: "8px", marginTop: "6px", flexWrap: "wrap" }}>
-                  {prediction.features_used.is_rush_hour && (
-                    <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "10px", background: "#F59E0B20", color: "#F59E0B" }}>Rush Hour</span>
-                  )}
-                  {prediction.features_used.is_snowing && (
-                    <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "10px", background: "#6366F120", color: "#6366F1" }}>Snowing</span>
-                  )}
-                  {prediction.features_used.is_raining && (
-                    <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "10px", background: "#3B82F620", color: "#3B82F6" }}>Raining</span>
-                  )}
-                  <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "10px", background: "#10B98120", color: "#10B981" }}>
-                    {prediction.features_used.weather_temp}°C
-                  </span>
+                  {prediction.features_used.is_rush_hour && <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "10px", background: "#F59E0B20", color: "#F59E0B" }}>Rush Hour</span>}
+                  {prediction.features_used.is_snowing   && <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "10px", background: "#6366F120", color: "#6366F1" }}>Snowing</span>}
+                  {prediction.features_used.is_raining   && <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "10px", background: "#3B82F620", color: "#3B82F6" }}>Raining</span>}
+                  <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "10px", background: "#10B98120", color: "#10B981" }}>{prediction.features_used.weather_temp}°C</span>
                 </div>
               </div>
             </div>
