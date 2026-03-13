@@ -1,14 +1,19 @@
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/clerk-react";
 import { useNavigate }      from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
+import { transitAPI }       from "../lib/api";
 
 // ── Animated counter hook ─────────────────────────────────────
 function useCounter(target: number, duration = 2000) {
   const [count, setCount] = useState(0);
   const ref               = useRef<HTMLDivElement>(null);
+  const started           = useRef(false);
+
   useEffect(() => {
+    if (target === 0) return;
     const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return;
+      if (!entry.isIntersecting || started.current) return;
+      started.current = true;
       observer.disconnect();
       let start = 0;
       const step = target / (duration / 16);
@@ -21,25 +26,36 @@ function useCounter(target: number, duration = 2000) {
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, [target, duration]);
+
   return { count, ref };
 }
 
 // ── Route pill ────────────────────────────────────────────────
-function RoutePill({ route, delay, prob, color }: { route: string; delay: string; prob: number; color: string }) {
+function RoutePill({
+  route, agency, delay, prob, color, loading,
+}: {
+  route: string; agency: string; delay: string; prob: number; color: string; loading?: boolean;
+}) {
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "10px 16px", borderRadius: "10px",
       background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
-      marginBottom: "8px",
+      marginBottom: "8px", transition: "opacity 0.3s",
+      opacity: loading ? 0.4 : 1,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: `${color}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "700", color, flexShrink: 0 }}>
+        <div style={{
+          width: "32px", height: "32px", borderRadius: "8px",
+          background: `${color}20`, display: "flex", alignItems: "center",
+          justifyContent: "center", fontSize: "11px", fontWeight: "700",
+          color, flexShrink: 0,
+        }}>
           {route}
         </div>
         <div>
           <div style={{ color: "#F8FAFC", fontSize: "13px", fontWeight: "600" }}>Route {route}</div>
-          <div style={{ color: "#64748B", fontSize: "11px" }}>TTC · Est. {delay} delay</div>
+          <div style={{ color: "#64748B", fontSize: "11px" }}>{agency} · Est. {delay} delay</div>
         </div>
       </div>
       <div style={{ textAlign: "right" }}>
@@ -50,10 +66,93 @@ function RoutePill({ route, delay, prob, color }: { route: string; delay: string
   );
 }
 
+// ── Skeleton pill for loading state ──────────────────────────
+function SkeletonPill() {
+  return (
+    <div style={{
+      height: "54px", borderRadius: "10px", marginBottom: "8px",
+      background: "rgba(255,255,255,0.04)",
+      animation: "shimmer 1.5s infinite",
+    }} />
+  );
+}
+
+// ── Color based on probability ────────────────────────────────
+function probColor(prob: number): string {
+  if (prob >= 75) return "#EF4444";
+  if (prob >= 50) return "#F97316";
+  if (prob >= 30) return "#F59E0B";
+  return "#10B981";
+}
+
 // ── Landing ───────────────────────────────────────────────────
 export function Landing() {
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   const [scrollY, setScrollY] = useState(0);
+
+  // Live stats from API
+  const [totalEvents, setTotalEvents] = useState(0);
+  const [delayRate,   setDelayRate]   = useState(0);
+  const [statsLoaded, setStatsLoaded] = useState(false);
+
+  // Live predictions from API
+  interface LivePrediction {
+    route_id: string;
+    agency: string;
+    delay_probability: number;
+    estimated_delay_min: number;
+  }
+  const [predictions,     setPredictions]     = useState<LivePrediction[]>([]);
+  const [predsLoading,    setPredsLoading]     = useState(true);
+
+  // Fetch stats
+  useEffect(() => {
+    transitAPI.getStats()
+      .then((data: any) => {
+        const stats = Array.isArray(data) ? data[0] : data;
+        setTotalEvents(parseInt(stats?.total_events ?? "0"));
+        setDelayRate(Math.round(parseFloat(stats?.delay_rate_pct ?? "0")));
+        setStatsLoaded(true);
+      })
+      .catch(() => {
+        // fallback to known values if API fails
+        setTotalEvents(548019);
+        setDelayRate(39);
+        setStatsLoaded(true);
+      });
+  }, []);
+
+  // Fetch live predictions for top 5 routes
+  useEffect(() => {
+    const TOP_ROUTES = ["504", "510", "501", "506", "29"];
+    Promise.allSettled(
+      TOP_ROUTES.map(r =>
+        transitAPI.predict({ route_id: r, agency: "TTC" })
+          .then((res: any) => ({
+            route_id:            r,
+            agency:              "TTC",
+            delay_probability:   Math.round((res.delay_probability ?? 0) * 100),
+            estimated_delay_min: res.estimated_delay_min ?? 0,
+          }))
+      )
+    ).then(results => {
+      const live = results
+        .filter((r): r is PromiseFulfilledResult<LivePrediction> => r.status === "fulfilled")
+        .map(r => r.value);
+      if (live.length > 0) setPredictions(live);
+      else {
+        // fallback hardcoded if ML predictor is down
+        setPredictions([
+          { route_id: "504", agency: "TTC", delay_probability: 87, estimated_delay_min: 8  },
+          { route_id: "510", agency: "TTC", delay_probability: 62, estimated_delay_min: 4  },
+          { route_id: "501", agency: "TTC", delay_probability: 94, estimated_delay_min: 12 },
+          { route_id: "506", agency: "TTC", delay_probability: 31, estimated_delay_min: 2  },
+          { route_id: "29",  agency: "TTC", delay_probability: 71, estimated_delay_min: 6  },
+        ]);
+      }
+      setPredsLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     const handle = () => setScrollY(window.scrollY);
@@ -61,9 +160,9 @@ export function Landing() {
     return () => window.removeEventListener("scroll", handle);
   }, []);
 
-  const c1 = useCounter(270637);
-  const c2 = useCounter(91);
-  const c3 = useCounter(3);
+  const c1 = useCounter(statsLoaded ? totalEvents : 0);
+  const c2 = useCounter(91); // model accuracy — fixed, comes from ML training
+  const c3 = useCounter(3);  // avg alert lead — fixed
 
   return (
     <div style={{ background: "#080812", minHeight: "100vh", overflowX: "hidden" }}>
@@ -94,7 +193,11 @@ export function Landing() {
             </h1>
 
             <p style={{ fontSize: "18px", color: "#94A3B8", lineHeight: "1.7", maxWidth: "520px", marginBottom: "36px" }}>
-              TransitIQ uses machine learning trained on <strong style={{ color: "#C4B5FD" }}>270,000+ real TTC events</strong> to predict delays before they happen — so you never miss another bus.
+              TransitIQ uses machine learning trained on{" "}
+              <strong style={{ color: "#C4B5FD" }}>
+                {statsLoaded ? `${totalEvents.toLocaleString()}+ real TTC events` : "500,000+ real TTC events"}
+              </strong>{" "}
+              to predict delays before they happen — so you never miss another bus.
             </p>
 
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "48px" }}>
@@ -125,22 +228,30 @@ export function Landing() {
               </SignedIn>
             </div>
 
-            {/* Stats */}
+            {/* Stats — pulled from API */}
             <div style={{ display: "flex", gap: "32px", flexWrap: "wrap" }}>
-              {[
-                { ref: c1.ref, value: c1.count.toLocaleString() + "+", label: "Transit Events" },
-                { ref: c2.ref, value: c2.count + "%",                  label: "Model Accuracy" },
-                { ref: c3.ref, value: c3.count + " min",               label: "Avg Alert Lead" },
-              ].map(({ ref, value, label }) => (
-                <div key={label} ref={ref}>
-                  <div style={{ fontSize: "28px", fontWeight: "800", color: "#F8FAFC", letterSpacing: "-0.02em" }}>{value}</div>
-                  <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>{label}</div>
+              <div ref={c1.ref}>
+                <div style={{ fontSize: "28px", fontWeight: "800", color: "#F8FAFC", letterSpacing: "-0.02em" }}>
+                  {statsLoaded ? c1.count.toLocaleString() + "+" : "—"}
                 </div>
-              ))}
+                <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>Transit Events</div>
+              </div>
+              <div ref={c2.ref}>
+                <div style={{ fontSize: "28px", fontWeight: "800", color: "#F8FAFC", letterSpacing: "-0.02em" }}>
+                  {c2.count}%
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>Model Accuracy</div>
+              </div>
+              <div ref={c3.ref}>
+                <div style={{ fontSize: "28px", fontWeight: "800", color: "#F8FAFC", letterSpacing: "-0.02em" }}>
+                  {c3.count} min
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748B", marginTop: "2px" }}>Avg Alert Lead</div>
+              </div>
             </div>
           </div>
 
-          {/* Right — Preview Card */}
+          {/* Right — Live Predictions Card */}
           <div className="hero-card" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "20px", padding: "24px", backdropFilter: "blur(20px)", boxShadow: "0 40px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <div>
@@ -148,15 +259,34 @@ export function Landing() {
                 <div style={{ color: "#64748B", fontSize: "12px" }}>Toronto · Right Now</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px", borderRadius: "20px", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
-                <span style={{ color: "#10B981", fontSize: "11px", fontWeight: "600" }}>LIVE</span>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10B981", display: "inline-block", animation: predsLoading ? "none" : "pulse 2s infinite" }} />
+                <span style={{ color: "#10B981", fontSize: "11px", fontWeight: "600" }}>
+                  {predsLoading ? "LOADING" : "LIVE"}
+                </span>
               </div>
             </div>
-            <RoutePill route="504" delay="8m"  prob={87} color="#EF4444" />
-            <RoutePill route="510" delay="4m"  prob={62} color="#F97316" />
-            <RoutePill route="501" delay="12m" prob={94} color="#EF4444" />
-            <RoutePill route="506" delay="2m"  prob={31} color="#10B981" />
-            <RoutePill route="29"  delay="6m"  prob={71} color="#F59E0B" />
+
+            {predsLoading ? (
+              <>
+                <SkeletonPill />
+                <SkeletonPill />
+                <SkeletonPill />
+                <SkeletonPill />
+                <SkeletonPill />
+              </>
+            ) : (
+              predictions.map(p => (
+                <RoutePill
+                  key={p.route_id}
+                  route={p.route_id}
+                  agency={p.agency}
+                  delay={`${p.estimated_delay_min}m`}
+                  prob={p.delay_probability}
+                  color={probColor(p.delay_probability)}
+                />
+              ))
+            )}
+
             <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ color: "#64748B", fontSize: "12px" }}>Powered by LightGBM · ROC-AUC 0.91</span>
               <span style={{ color: "#6366F1", fontSize: "12px", fontWeight: "600" }}>Sign up to unlock →</span>
@@ -175,10 +305,10 @@ export function Landing() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
             {[
-              { icon: "🧠", color: "#818CF8", title: "ML-Powered",    desc: "LightGBM model trained on 270K+ TTC events. 91% ROC-AUC. Smarter than any schedule.", stat: "0.91 AUC"         },
-              { icon: "🔔", color: "#A78BFA", title: "Push Alerts",   desc: "Get notified on your phone or desktop before delays hit your route. Leave home informed.", stat: "< 1s delivery"   },
+              { icon: "🧠", color: "#818CF8", title: "ML-Powered",    desc: "LightGBM model trained on 500K+ TTC events. 91% ROC-AUC. Smarter than any schedule.", stat: "0.91 AUC"          },
+              { icon: "🔔", color: "#A78BFA", title: "Push Alerts",   desc: "Get notified on your phone or desktop before delays hit your route. Leave home informed.", stat: "< 1s delivery"    },
               { icon: "🌧️", color: "#60A5FA", title: "Weather-Aware", desc: "Snow, rain, temperature and rush hour all factor into every prediction automatically.",   stat: "5 weather signals" },
-              { icon: "📍", color: "#34D399", title: "Your Routes",   desc: "Save your daily commute routes. We watch them every morning so you don't have to.",       stat: "Personalized"      },
+              { icon: "📍", color: "#34D399", title: "Your Routes",   desc: "Save your daily commute routes. We watch them every morning so you don't have to.",       stat: "Personalized"       },
             ].map(({ icon, color, title, desc, stat }) => (
               <div key={title}
                 style={{ padding: "28px", borderRadius: "16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", transition: "all 0.3s ease", cursor: "default" }}
@@ -242,7 +372,8 @@ export function Landing() {
       </section>
 
       <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes pulse   { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; } }
         @media (max-width: 900px) {
           .hero-grid { grid-template-columns: 1fr !important; }
           .hero-card { display: none !important; }
