@@ -1,16 +1,16 @@
-import { useState, useEffect }              from "react";
-import { useUser, useAuth }                from "@clerk/clerk-react";
-import { transitAPI, type SavedRoute }     from "../lib/api";
-import { Trash2, BookmarkPlus }            from "lucide-react";
-import { PushToggle }                      from "../components/PushToggle";
+import { useState, useEffect }           from "react";
+import { useUser, useAuth }             from "@clerk/clerk-react";
+import { transitAPI, type SavedRoute }  from "../lib/api";
+import { Trash2, Plus, Bell }           from "lucide-react";
+import { PushToggle }                   from "../components/PushToggle";
 
 export function Profile() {
-  const { user }                        = useUser();
-  const { getToken }                    = useAuth();
-  const [savedRoutes, setSavedRoutes]   = useState<SavedRoute[]>([]);
-  const [newRoute, setNewRoute]         = useState("");
-  const [loading, setLoading]           = useState(false);
-  const [isMobile, setIsMobile]         = useState(window.innerWidth < 640);
+  const { user }                      = useUser();
+  const { getToken }                  = useAuth();
+  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+  const [newRoute, setNewRoute]       = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [isMobile, setIsMobile]       = useState(window.innerWidth < 640);
 
   useEffect(() => {
     loadRoutes();
@@ -55,126 +55,162 @@ export function Profile() {
   };
 
   return (
-    <div style={{ maxWidth: "700px", margin: "0 auto", padding: isMobile ? "16px" : "24px" }}>
+    <div style={{ background: "#080812", minHeight: "100vh" }}>
+      <div style={{ maxWidth: "720px", margin: "0 auto", padding: isMobile ? "20px 16px" : "32px 24px" }}>
 
-      {/* Profile Card */}
-      <div className="glass-card" style={{ padding: isMobile ? "20px" : "28px", marginBottom: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-          <div style={{
-            width:          "64px",
-            height:         "64px",
-            borderRadius:   "50%",
-            background:     "linear-gradient(135deg, #6366F1, #8B5CF6)",
-            display:        "flex",
-            alignItems:     "center",
-            justifyContent: "center",
-            fontSize:       "24px",
-            fontWeight:     "700",
-            color:          "#fff",
-            flexShrink:     0,
-          }}>
-            {user?.firstName?.[0] || "U"}
-          </div>
-          <div>
-            <h2 style={{ color: "#F8FAFC", fontWeight: "700", fontSize: isMobile ? "18px" : "22px", marginBottom: "4px" }}>
-              {user?.fullName || "User"}
-            </h2>
-            <p style={{ color: "#94A3B8", fontSize: "14px" }}>
-              {user?.primaryEmailAddress?.emailAddress}
-            </p>
-            <span style={{ display: "inline-block", marginTop: "8px", padding: "3px 10px", borderRadius: "20px", fontSize: "12px", background: "#6366F120", color: "#6366F1" }}>
-              ⭐ {savedRoutes.length} saved routes
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Saved Routes */}
-      <div className="glass-card" style={{ padding: isMobile ? "16px" : "24px", marginBottom: "16px" }}>
-        <h3 style={{ color: "#F8FAFC", fontWeight: "600", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <BookmarkPlus size={18} color="#6366F1" /> My Saved Routes
-        </h3>
-
-        {/* Add Route */}
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-          <input
-            className="input-dark"
-            placeholder="Enter route number (e.g. 504)"
-            value={newRoute}
-            onChange={e => setNewRoute(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleAdd()}
-            style={{ flex: 1 }}
-          />
-          <button
-            onClick={handleAdd}
-            disabled={loading}
-            className="btn-primary"
-            style={{ padding: "0 16px", whiteSpace: "nowrap" }}
-          >
-            + Add
-          </button>
+        {/* Header */}
+        <div style={{ marginBottom: "28px" }}>
+          <h1 style={{ fontSize: isMobile ? "22px" : "26px", fontWeight: "800", color: "#F8FAFC", letterSpacing: "-0.03em", marginBottom: "4px" }}>
+            My Profile
+          </h1>
+          <p style={{ color: "#334155", fontSize: "14px" }}>Manage your saved routes and notification preferences</p>
         </div>
 
-        {/* Route List */}
-        {savedRoutes.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "32px", color: "#64748B" }}>
-            <div style={{ fontSize: "32px", marginBottom: "8px" }}>🔖</div>
-            <p>No saved routes yet</p>
-            <p style={{ fontSize: "13px", marginTop: "4px" }}>Add your daily commute routes above</p>
+        {/* Profile Card */}
+        <div style={{ padding: "24px", borderRadius: "16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", marginBottom: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div style={{
+              width:          "56px",
+              height:         "56px",
+              borderRadius:   "14px",
+              background:     "linear-gradient(135deg, #6366F1, #8B5CF6)",
+              display:        "flex",
+              alignItems:     "center",
+              justifyContent: "center",
+              fontSize:       "22px",
+              fontWeight:     "900",
+              color:          "#fff",
+              flexShrink:     0,
+              letterSpacing:  "-0.02em",
+            }}>
+              {user?.firstName?.[0] || "U"}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ color: "#F8FAFC", fontWeight: "800", fontSize: "17px", letterSpacing: "-0.02em", marginBottom: "2px" }}>
+                {user?.fullName || "User"}
+              </p>
+              <p style={{ color: "#334155", fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {user?.primaryEmailAddress?.emailAddress}
+              </p>
+            </div>
+            <div style={{ padding: "6px 12px", borderRadius: "20px", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", flexShrink: 0 }}>
+              <span style={{ color: "#818CF8", fontSize: "12px", fontWeight: "700" }}>
+                {savedRoutes.length} routes saved
+              </span>
+            </div>
           </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {savedRoutes.map(route => (
-              <div key={route.id} style={{
-                display:        "flex",
-                alignItems:     "center",
-                justifyContent: "space-between",
-                padding:        "12px 16px",
-                borderRadius:   "10px",
-                background:     "#1A1A2E",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div style={{
-                    width:          "40px",
-                    height:         "40px",
-                    borderRadius:   "8px",
-                    background:     "#6366F120",
-                    display:        "flex",
-                    alignItems:     "center",
-                    justifyContent: "center",
-                    fontSize:       "14px",
-                    fontWeight:     "700",
-                    color:          "#6366F1",
-                    flexShrink:     0,
-                  }}>
-                    {route.route_id}
-                  </div>
-                  <div>
-                    <p style={{ color: "#F8FAFC", fontWeight: "600", fontSize: "14px" }}>
-                      Route {route.route_id}
-                    </p>
-                    <p style={{ color: "#64748B", fontSize: "12px" }}>{route.agency}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleRemove(route.id)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#64748B", padding: "4px" }}
+        </div>
+
+        {/* Saved Routes */}
+        <div style={{ padding: "24px", borderRadius: "16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", marginBottom: "16px" }}>
+          <p style={{ color: "#334155", fontSize: "11px", fontWeight: "700", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "16px" }}>
+            My Saved Routes
+          </p>
+
+          {/* Add */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            <input
+              placeholder="Enter route number (e.g. 504)"
+              value={newRoute}
+              onChange={e => setNewRoute(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAdd()}
+              style={{
+                flex:         1,
+                padding:      "10px 14px",
+                borderRadius: "10px",
+                background:   "rgba(255,255,255,0.04)",
+                border:       "1px solid rgba(255,255,255,0.08)",
+                color:        "#F8FAFC",
+                fontSize:     "14px",
+                outline:      "none",
+                transition:   "border-color 0.2s",
+              }}
+              onFocus={e => (e.target.style.borderColor = "rgba(99,102,241,0.4)")}
+              onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
+            />
+            <button
+              onClick={handleAdd}
+              disabled={loading}
+              style={{
+                padding:      "10px 16px",
+                borderRadius: "10px",
+                border:       "none",
+                background:   "linear-gradient(135deg, #6366F1, #8B5CF6)",
+                color:        "#fff",
+                fontSize:     "14px",
+                fontWeight:   "700",
+                cursor:       loading ? "not-allowed" : "pointer",
+                display:      "flex",
+                alignItems:   "center",
+                gap:          "6px",
+                opacity:      loading ? 0.7 : 1,
+                whiteSpace:   "nowrap",
+              }}
+            >
+              <Plus size={16} /> Add
+            </button>
+          </div>
+
+          {/* Route List */}
+          {savedRoutes.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px", borderRadius: "12px", background: "rgba(255,255,255,0.01)", border: "1px dashed rgba(255,255,255,0.08)" }}>
+              <div style={{ fontSize: "28px", marginBottom: "8px" }}>🔖</div>
+              <p style={{ color: "#334155", fontSize: "14px" }}>No saved routes yet</p>
+              <p style={{ color: "#1E293B", fontSize: "12px", marginTop: "4px" }}>Add your daily commute routes above</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {savedRoutes.map(route => (
+                <div key={route.id} style={{
+                  display:        "flex",
+                  alignItems:     "center",
+                  justifyContent: "space-between",
+                  padding:        "12px 16px",
+                  borderRadius:   "12px",
+                  background:     "rgba(255,255,255,0.03)",
+                  border:         "1px solid rgba(255,255,255,0.06)",
+                  transition:     "border-color 0.2s",
+                }}
+                onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(99,102,241,0.2)"}
+                onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.06)"}
                 >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "900", color: "#818CF8", flexShrink: 0 }}>
+                      {route.route_id}
+                    </div>
+                    <div>
+                      <p style={{ color: "#F8FAFC", fontWeight: "700", fontSize: "14px", letterSpacing: "-0.01em" }}>Route {route.route_id}</p>
+                      <p style={{ color: "#334155", fontSize: "12px" }}>{route.agency}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemove(route.id)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#1E293B", padding: "6px", borderRadius: "8px", display: "flex", transition: "all 0.2s" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#EF4444"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(239,68,68,0.1)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#1E293B"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-      {/* Push Notifications */}
-      <div className="glass-card" style={{ padding: isMobile ? "16px" : "24px" }}>
-        <h3 style={{ color: "#F8FAFC", fontWeight: "600", marginBottom: "8px" }}>Delay Notifications</h3>
-        <p style={{ color: "#94A3B8", fontSize: "14px", marginBottom: "16px" }}>
-          Get notified before delays happen on your saved routes.
-        </p>
-        <PushToggle />
+        {/* Push Notifications */}
+        <div style={{ padding: "24px", borderRadius: "16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+            <Bell size={16} color="#818CF8" />
+            <p style={{ color: "#334155", fontSize: "11px", fontWeight: "700", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              Delay Notifications
+            </p>
+          </div>
+          <p style={{ color: "#334155", fontSize: "13px", marginBottom: "16px", lineHeight: "1.5" }}>
+            Get push notifications before delays hit your saved routes — before you leave home.
+          </p>
+          <PushToggle />
+        </div>
+
       </div>
     </div>
   );
