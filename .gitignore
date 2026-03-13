@@ -34,7 +34,7 @@ yarn-error.log*
 
 
 # ── ML Models (too large for Git) ────────────────────────────
-*.pkl
+
 *.joblib
 *.model
 *.h5
