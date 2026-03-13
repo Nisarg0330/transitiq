@@ -5,6 +5,8 @@ import { Landing } from "./pages/Landing";
 import { Dashboard } from "./pages/Dashboard";
 import { RoutesPage } from "./pages/RoutesPage";
 import { Profile } from "./pages/Profile";
+import { Footer } from "./components/Footer";
+
 
 export default function App() {
   return (
@@ -28,6 +30,7 @@ export default function App() {
             <Route path="*"        element={<Navigate to="/" />} />
           </Routes>
         </main>
+        <Footer />
       </SignedIn>
 
     </div>
