@@ -44,20 +44,28 @@ export function Dashboard() {
   }, []);
 
   const handlePredict = async () => {
-    setLoading(true);
-    try {
-      const result = await transitAPI.predict({
-        route_id:       selectedRoute,
-        weather_temp:   parseFloat((Math.random() * 25 - 5).toFixed(1)),
-        weather_precip: Math.random() > 0.7 ? parseFloat((Math.random() * 5).toFixed(1)) : 0,
-      });
-      setPrediction(result);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    // Fetch real current Toronto weather first
+    const weather = await fetch(
+      "https://api.open-meteo.com/v1/forecast?latitude=43.7001&longitude=-79.4163&current=temperature_2m,precipitation&timezone=America%2FToronto"
+    ).then(r => r.json());
+
+    const temp   = weather.current.temperature_2m;
+    const precip = weather.current.precipitation;
+
+    const result = await transitAPI.predict({
+      route_id:       selectedRoute,
+      weather_temp:   temp,
+      weather_precip: precip,
+    });
+    setPrediction(result);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const ttcStats = stats.find(s => s.agency === "TTC");
 
