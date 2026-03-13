@@ -38,9 +38,9 @@ app.use(helmet());
 
 app.use(cors({
   origin: [
-    "http://localhost:3000",
     "http://localhost:5173",
-    process.env.FRONTEND_URL || "http://localhost:3000",
+    "https://transitiq.vercel.app",
+    process.env.FRONTEND_URL || "",
   ],
   credentials: true,
 }));
