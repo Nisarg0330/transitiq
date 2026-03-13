@@ -30,10 +30,10 @@ export interface PredictionResult {
 }
 
 export interface RouteInfo {
-  route_id:    string;
-  agency:      string;
+  route_id:     string;
+  agency:       string;
   total_events: number;
-  avg_delay:   number;
+  avg_delay:    number;
 }
 
 export interface ForecastPoint {
@@ -70,9 +70,9 @@ export const transitAPI = {
 
   // Predict delay for a single trip
   predict: async (params: {
-    route_id:       string;
-    agency?:        string;
-    weather_temp?:  number;
+    route_id:        string;
+    agency?:         string;
+    weather_temp?:   number;
     weather_precip?: number;
   }): Promise<PredictionResult> => {
     const res = await api.post("/api/predict", {
@@ -84,15 +84,15 @@ export const transitAPI = {
 
   // Get 12-hour forecast for a route
   getForecast: async (
-    routeId:      string,
-    agency?:      string,
-    weatherTemp?: number,
+    routeId:        string,
+    agency?:        string,
+    weatherTemp?:   number,
     weatherPrecip?: number,
   ): Promise<ForecastPoint[]> => {
     const res = await api.get(`/api/predict/route/${routeId}`, {
       params: {
-        agency:         agency || "TTC",
-        weather_temp:   weatherTemp  || 5,
+        agency:         agency        || "TTC",
+        weather_temp:   weatherTemp   || 5,
         weather_precip: weatherPrecip || 0,
       },
     });
@@ -131,4 +131,25 @@ export const transitAPI = {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
+
+  // ── Push Notifications ──────────────────────────────────────
+
+  // Save push subscription to DB
+  subscribePush: async (subscription: object) => {
+    const { data } = await api.post("/api/push/subscribe", subscription);
+    return data;
+  },
+
+  // Remove push subscription from DB
+  unsubscribePush: async () => {
+    const { data } = await api.delete("/api/push/unsubscribe");
+    return data;
+  },
+
+  // Send a test push notification
+  testPush: async () => {
+    const { data } = await api.post("/api/push/test", {});
+    return data;
+  },
+
 };

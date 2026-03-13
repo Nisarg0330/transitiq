@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { transitAPI, type SavedRoute } from "../lib/api";
 import { Bookmark, Trash2, Plus, Star } from "lucide-react";
+import { PushToggle } from "../components/PushToggle";
 
 export function Profile() {
   const { user }          = useUser();
@@ -103,6 +104,17 @@ export function Profile() {
             My Saved Routes
           </h2>
         </div>
+
+      {/* Push Notifications */}
+      <div className="glass-card" style={{ padding: "20px", marginTop: "16px", marginBottom: "24px" }}>
+        <h3 style={{ color: "#F8FAFC", fontWeight: "600", marginBottom: "12px" }}>
+          Delay Notifications
+        </h3>
+        <p style={{ color: "#94A3B8", fontSize: "14px", marginBottom: "16px" }}>
+          Get notified before delays happen on your saved routes.
+        </p>
+        <PushToggle />
+      </div>
 
         {/* Add Route */}
         <div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>

@@ -16,6 +16,7 @@ import { predictRouter } from "./routes/predict";
 import { userRouter }    from "./routes/user";
 import { webhookRouter } from "./routes/webhook";
 import { logger }        from "./logger";
+import { pushRouter } from "./routes/push";
 
 dotenv.config({ path: "../../.env" });
 
@@ -82,6 +83,9 @@ app.use((req, _res, next) => {
 app.use("/api/health",  healthRouter);
 app.use("/api/predict", predictRouter);
 app.use("/api/user",    userRouter);
+// with the other routes:
+app.use("/api/push", pushRouter);
+
 
 // 404 handler
 app.use((_req, res) => {
@@ -106,8 +110,6 @@ app.listen(PORT, () => {
   logger.info("=".repeat(50));
 });
 
-import { pushRouter } from "./routes/push";
-// with the other routes:
-app.use("/api/push", pushRouter);
+
 
 export default app;

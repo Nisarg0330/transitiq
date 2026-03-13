@@ -5,15 +5,18 @@
  * Used in Profile page and Navbar.
  */
 
-import { useState, useEffect } from "react";
-import { Bell, BellOff }       from "lucide-react";
-import { subscribeToPush, unsubscribeFromPush, isPushSubscribed } from "../lib/push";
-import { transitAPI }          from "../lib/api";
+import { useState, useEffect }                                     from "react";
+import { Bell, BellOff }                                           from "lucide-react";
+import { subscribeToPush, unsubscribeFromPush, isPushSubscribed }  from "../lib/push";
+import { api }                                                     from "../lib/api";
+import { useAuth }                                                 from "@clerk/clerk-react";
 
 export function PushToggle() {
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [status, setStatus]         = useState<string | null>(null);
+
+  const { getToken } = useAuth();
 
   useEffect(() => {
     isPushSubscribed().then(setSubscribed);
@@ -24,10 +27,13 @@ export function PushToggle() {
     setStatus(null);
 
     try {
+      const token = await getToken();
+      const headers = { Authorization: `Bearer ${token}` };
+
       if (subscribed) {
         // Unsubscribe
         await unsubscribeFromPush();
-        await transitAPI.unsubscribePush();
+        await api.delete("/api/push/unsubscribe", { headers });
         setSubscribed(false);
         setStatus("Notifications disabled");
       } else {
@@ -37,12 +43,17 @@ export function PushToggle() {
           setStatus("Permission denied — enable notifications in browser settings");
           return;
         }
-        await transitAPI.subscribePush(sub.toJSON());
+        await api.post("/api/push/subscribe", sub.toJSON(), { headers });
         setSubscribed(true);
         setStatus("Notifications enabled! ✓");
 
-        // Send test notification
-        setTimeout(() => transitAPI.testPush(), 1000);
+        // Send test notification after 1 second
+        setTimeout(async () => {
+          const t = await getToken();
+          await api.post("/api/push/test", {}, {
+            headers: { Authorization: `Bearer ${t}` },
+          });
+        }, 1000);
       }
     } catch (err) {
       setStatus("Something went wrong — try again");
@@ -76,7 +87,7 @@ export function PushToggle() {
       {status && (
         <p style={{
           fontSize: "12px",
-          color: status.includes("denied") ? "#EF4444" : "#10B981",
+          color:    status.includes("denied") ? "#EF4444" : "#10B981",
           marginTop: "4px",
         }}>
           {status}
