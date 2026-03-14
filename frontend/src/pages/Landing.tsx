@@ -92,7 +92,6 @@ export function Landing() {
 
   // Live stats from API
   const [totalEvents, setTotalEvents] = useState(0);
-  const [delayRate,   setDelayRate]   = useState(0);
   const [statsLoaded, setStatsLoaded] = useState(false);
 
   // Live predictions from API
@@ -108,10 +107,9 @@ export function Landing() {
   // Fetch stats
   useEffect(() => {
     transitAPI.getStats()
-      .then((data: any) => {
-        const stats = Array.isArray(data) ? data[0] : data;
-        setTotalEvents(parseInt(stats?.total_events ?? "0"));
-        setDelayRate(Math.round(parseFloat(stats?.delay_rate_pct ?? "0")));
+      .then((stats: any) => {
+        setTotalEvents(stats?.total_events   ?? 0);
+        setDelayRate(Math.round((stats?.delay_rate ?? 0) * 100));
         setStatsLoaded(true);
       })
       .catch(() => {
