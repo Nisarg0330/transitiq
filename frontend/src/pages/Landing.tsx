@@ -109,13 +109,11 @@ export function Landing() {
     transitAPI.getStats()
       .then((stats: any) => {
         setTotalEvents(stats?.total_events   ?? 0);
-        setDelayRate(Math.round((stats?.delay_rate ?? 0) * 100));
         setStatsLoaded(true);
       })
       .catch(() => {
         // fallback to known values if API fails
         setTotalEvents(548019);
-        setDelayRate(39);
         setStatsLoaded(true);
       });
   }, []);
