@@ -107,8 +107,9 @@ export function Landing() {
   // Fetch stats
   useEffect(() => {
     transitAPI.getStats()
-      .then((stats: any) => {
-        setTotalEvents(stats?.total_events   ?? 0);
+      .then((data: any) => {
+        const stats = Array.isArray(data) ? data[0] : data;
+        setTotalEvents(parseInt(stats?.total_events ?? "0"));
         setStatsLoaded(true);
       })
       .catch(() => {
