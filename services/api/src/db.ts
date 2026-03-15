@@ -13,9 +13,12 @@ dotenv.config({ path: "../../.env" });
 export const db = new Pool({
   connectionString: process.env.DATABASE_URL ||
     "postgresql://transitiq:localdev123@localhost:5432/transitiq",
-  max:             10,   // max pool size
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  ssl: process.env.NODE_ENV === "production"
+    ? { rejectUnauthorized: false }
+    : false,
+  max:                    10,
+  idleTimeoutMillis:      30000,
+  connectionTimeoutMillis: 5000,
 });
 
 // Verify connection on startup
