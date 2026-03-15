@@ -7,6 +7,7 @@ COPY tsconfig.json ./
 RUN npm install
 
 COPY src/ ./src/
+
 RUN npm run build
 
 EXPOSE 3001
