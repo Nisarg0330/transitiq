@@ -2,11 +2,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY services/api/package*.json ./
+COPY services/api/tsconfig.json ./
 RUN npm install
 
-COPY src/ ./src/
+COPY services/api/src/ ./src/
 
 RUN npm run build
 
