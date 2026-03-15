@@ -21,6 +21,7 @@ import { pushRouter } from "./routes/push";
 dotenv.config({ path: "../../.env" });
 
 const app  = express();
+app.set("trust proxy", 1);
 const PORT = process.env.API_PORT || 3001;
 
 // =============================================================
